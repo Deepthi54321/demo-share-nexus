@@ -202,218 +202,170 @@ const SessionDetail = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <Button variant="ghost" onClick={() => navigate(-1)}>
+      <div className="space-y-8">
+        <div className="flex items-center mb-2">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="mr-2">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+            Back to Sessions
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">{session.title}</h1>
-          <p className="text-gray-600 mt-1">View and manage session details</p>
+          <h1 className="text-4xl font-bold text-gray-900 ml-2">{session.title}</h1>
         </div>
+        <div className="text-lg text-gray-500 mb-4">Session Details</div>
 
+        {/* Session Overview */}
         <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <CardTitle>Session Information</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="p-8">
+            <h2 className="text-2xl font-bold mb-6">Session Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
               <div>
-                <Label htmlFor="technology">Technology</Label>
-                {editingFields['technology'] ? (
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="technology"
-                      value={editValues.technology || ''}
-                      onChange={(e) => setEditValues(prev => ({ ...prev, technology: e.target.value }))}
-                    />
-                    <Button variant="ghost" size="sm" onClick={() => handleSave('technology')} disabled={isSaving['technology']}>
-                      {isSaving['technology'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('technology')}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p>{session.technology}</p>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit('technology')}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <div className="text-gray-500 font-medium">Technology</div>
+                <Badge variant="outline" className="mt-1">{session.technology}</Badge>
               </div>
               <div>
-                <Label htmlFor="date">Date</Label>
-                {editingFields['date'] ? (
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="date"
-                      type="date"
-                      value={editValues.date || ''}
-                      onChange={(e) => setEditValues(prev => ({ ...prev, date: e.target.value }))}
-                    />
-                    <Button variant="ghost" size="sm" onClick={() => handleSave('date')} disabled={isSaving['date']}>
-                      {isSaving['date'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('date')}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p>{session.date}</p>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit('date')}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="time">Time</Label>
-                {editingFields['time'] ? (
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="time"
-                      type="time"
-                      value={editValues.time || ''}
-                      onChange={(e) => setEditValues(prev => ({ ...prev, time: e.target.value }))}
-                    />
-                    <Button variant="ghost" size="sm" onClick={() => handleSave('time')} disabled={isSaving['time']}>
-                      {isSaving['time'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('time')}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p>{session.time}</p>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit('time')}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="location">Location</Label>
-                {editingFields['location'] ? (
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="location"
-                      value={editValues.location || ''}
-                      onChange={(e) => setEditValues(prev => ({ ...prev, location: e.target.value }))}
-                    />
-                    <Button variant="ghost" size="sm" onClick={() => handleSave('location')} disabled={isSaving['location']}>
-                      {isSaving['location'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('location')}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p>{session.location}</p>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit('location')}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="maxAttendees">Max Attendees</Label>
-                {editingFields['maxAttendees'] ? (
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="maxAttendees"
-                      type="number"
-                      value={editValues.maxAttendees?.toString() || ''}
-                      onChange={(e) => setEditValues(prev => ({ ...prev, maxAttendees: Number(e.target.value) }))}
-                    />
-                    <Button variant="ghost" size="sm" onClick={() => handleSave('maxAttendees')} disabled={isSaving['maxAttendees']}>
-                      {isSaving['maxAttendees'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('maxAttendees')}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p>{session.maxAttendees}</p>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit('maxAttendees')}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="difficulty">Difficulty</Label>
-                {editingFields['difficulty'] ? (
-                  <div className="flex items-center space-x-2">
-                    <Select onValueChange={(value) => setEditValues(prev => ({ ...prev, difficulty: value as 'Beginner' | 'Intermediate' | 'Advanced' }))}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder={editValues.difficulty || "Select difficulty"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Beginner">Beginner</SelectItem>
-                        <SelectItem value="Intermediate">Intermediate</SelectItem>
-                        <SelectItem value="Advanced">Advanced</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="ghost" size="sm" onClick={() => handleSave('difficulty')} disabled={isSaving['difficulty']}>
-                      {isSaving['difficulty'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('difficulty')}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p>{session.difficulty}</p>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit('difficulty')}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="type">Type</Label>
+                <div className="text-gray-500 font-medium">Type</div>
                 {editingFields['type'] ? (
-                  <div className="flex items-center space-x-2">
-                    <Select onValueChange={(value) => setEditValues(prev => ({ ...prev, type: value as 'PROJECT_BASED' | 'PRODUCT_BASED' }))}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder={editValues.type || "Select type"} />
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Select value={editValues.type || ''} onValueChange={(value) => setEditValues(prev => ({ ...prev, type: value as 'PROJECT_BASED' | 'PRODUCT_BASED' }))}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder={editValues.type || 'Select type'} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="PROJECT_BASED">Project Based</SelectItem>
-                        <SelectItem value="PRODUCT_BASED">Product Based</SelectItem>
+                        <SelectItem value="PROJECT_BASED">Project-based</SelectItem>
+                        <SelectItem value="PRODUCT_BASED">Product-based</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button variant="ghost" size="sm" onClick={() => handleSave('type')} disabled={isSaving['type']}>
                       {isSaving['type'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('type')}>
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('type')}><X className="h-4 w-4" /></Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between">
-                    <p>{session.type}</p>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit('type')}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                  <div className="flex items-center mt-1">
+                    <Badge className="bg-indigo-100 text-indigo-800">{session.type === 'PROJECT_BASED' ? 'Project-based' : 'Product-based'}</Badge>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('type')}><Edit className="h-4 w-4" /></Button>
                   </div>
                 )}
               </div>
               <div>
-                <Label htmlFor="currentStatus">Current Status</Label>
+                <div className="text-gray-500 font-medium">Status</div>
+                <Badge className="bg-blue-100 text-blue-800 mt-1">{session.currentStatus || session.status}</Badge>
+              </div>
+              <div className="col-span-1 md:col-span-2 flex items-center space-x-8 mt-4">
+                <div className="flex items-center space-x-2">
+                  <span className="text-gray-500"><span className="inline-block align-middle"><svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></span> {session.date}</span>
+                  <span className="text-gray-500 ml-6"><span className="inline-block align-middle"><svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 6v6l4 2" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="10" stroke="#64748b" strokeWidth="2"/></svg></span> {session.time}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-gray-500"><span className="inline-block align-middle"><svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="7" r="4" stroke="#64748b" strokeWidth="2"/></svg></span> {session.attendees} / {session.maxAttendees} attendees</span>
+                  <span className="text-gray-500 ml-6"><span className="inline-block align-middle"><svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 17.75l-6.16 3.24 1.18-6.88L2 9.76l6.92-1L12 2.5l3.08 6.26 6.92 1-5.02 4.35 1.18 6.88z" stroke="#fbbf24" strokeWidth="2" strokeLinejoin="round"/></svg></span> {session.rating ? `${session.rating}/5` : '-'}</span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <div className="text-gray-500 font-medium">Difficulty</div>
+                <Badge className={session.difficulty === 'Advanced' ? 'bg-red-100 text-red-800' : session.difficulty === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}>{session.difficulty}</Badge>
+              </div>
+              <div className="mt-4">
+                <div className="text-gray-500 font-medium">Location</div>
+                <span className="inline-flex items-center"><svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 21s-6-5.686-6-10A6 6 0 0 1 18 11c0 4.314-6 10-6 10Z" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="11" r="2" stroke="#64748b" strokeWidth="2"/></svg></span> {session.location}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sprint Information */}
+        <Card>
+          <CardContent className="p-8">
+            <h2 className="text-2xl font-bold mb-6">Sprint Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <div className="text-gray-500 font-medium">Sprint Name</div>
+                {editingFields['sprintName'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input
+                      value={editValues.sprintName || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, sprintName: e.target.value }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('sprintName')} disabled={isSaving['sprintName']}>
+                      {isSaving['sprintName'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('sprintName')}><X className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.sprintName || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('sprintName')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-gray-500 font-medium">Story Points</div>
+                {editingFields['storyPoints'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input
+                      type="number"
+                      value={editValues.storyPoints || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, storyPoints: Number(e.target.value) }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('storyPoints')} disabled={isSaving['storyPoints']}>
+                      {isSaving['storyPoints'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('storyPoints')}><X className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.storyPoints || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('storyPoints')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-gray-500 font-medium">Number of Tasks</div>
+                {editingFields['numberOfTasks'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input
+                      type="number"
+                      value={editValues.numberOfTasks || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, numberOfTasks: Number(e.target.value) }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('numberOfTasks')} disabled={isSaving['numberOfTasks']}>
+                      {isSaving['numberOfTasks'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('numberOfTasks')}><X className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.numberOfTasks || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('numberOfTasks')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-gray-500 font-medium">Number of Bugs</div>
+                {editingFields['numberOfBugs'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input
+                      type="number"
+                      value={editValues.numberOfBugs || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, numberOfBugs: Number(e.target.value) }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('numberOfBugs')} disabled={isSaving['numberOfBugs']}>
+                      {isSaving['numberOfBugs'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('numberOfBugs')}><X className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.numberOfBugs || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('numberOfBugs')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-gray-500 font-medium">Current Status</div>
                 {editingFields['currentStatus'] ? (
-                  <div className="flex items-center space-x-2">
-                    <Select onValueChange={(value) => setEditValues(prev => ({ ...prev, currentStatus: value as 'Planning' | 'In Progress' | 'Testing' | 'Completed' | 'On Hold' }))}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder={editValues.currentStatus || "Select status"} />
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Select value={editValues.currentStatus || ''} onValueChange={value => setEditValues(prev => ({ ...prev, currentStatus: value as any }))}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder={editValues.currentStatus || 'Select status'} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Planning">Planning</SelectItem>
@@ -426,55 +378,125 @@ const SessionDetail = () => {
                     <Button variant="ghost" size="sm" onClick={() => handleSave('currentStatus')} disabled={isSaving['currentStatus']}>
                       {isSaving['currentStatus'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('currentStatus')}>
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('currentStatus')}><X className="h-4 w-4" /></Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between">
-                    <Badge className={cn(
-                      "bg-blue-100 text-blue-800",
-                      session.currentStatus === 'Planning' && "bg-blue-100 text-blue-800",
-                      session.currentStatus === 'In Progress' && "bg-yellow-100 text-yellow-800",
-                      session.currentStatus === 'Testing' && "bg-purple-100 text-purple-800",
-                      session.currentStatus === 'Completed' && "bg-green-100 text-green-800",
-                      session.currentStatus === 'On Hold' && "bg-red-100 text-red-800"
-                    )}>
-                      {session.currentStatus}
-                    </Badge>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit('currentStatus')}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                  <div className="flex items-center mt-1">
+                    <Badge className="bg-blue-100 text-blue-800">{session.currentStatus || '-'}</Badge>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('currentStatus')}><Edit className="h-4 w-4" /></Button>
                   </div>
                 )}
               </div>
             </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              {editingFields['description'] ? (
-                <div className="flex flex-col space-y-2">
-                  <Textarea
-                    id="description"
-                    value={editValues.description || ''}
-                    onChange={(e) => setEditValues(prev => ({ ...prev, description: e.target.value }))}
-                  />
-                  <div className="flex justify-end space-x-2">
+          </CardContent>
+        </Card>
+
+        {/* Session Details */}
+        <Card>
+          <CardContent className="p-8">
+            <h2 className="text-2xl font-bold mb-6">Session Details</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <div className="text-gray-500 font-medium">Description</div>
+                {editingFields['description'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Textarea
+                      value={editValues.description || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, description: e.target.value }))}
+                    />
                     <Button variant="ghost" size="sm" onClick={() => handleSave('description')} disabled={isSaving['description']}>
                       {isSaving['description'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleCancel('description')}>
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('description')}><X className="h-4 w-4" /></Button>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <p>{session.description}</p>
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit('description')}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.description || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('description')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-gray-500 font-medium">Prerequisites</div>
+                {editingFields['prerequisites'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Textarea
+                      value={editValues.prerequisites || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, prerequisites: e.target.value }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('prerequisites')} disabled={isSaving['prerequisites']}>
+                      {isSaving['prerequisites'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('prerequisites')}><X className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.prerequisites || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('prerequisites')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-gray-500 font-medium">Feedback</div>
+                {editingFields['feedback'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Textarea
+                      value={editValues.feedback || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, feedback: e.target.value }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('feedback')} disabled={isSaving['feedback']}>
+                      {isSaving['feedback'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('feedback')}><X className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.feedback || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('feedback')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-gray-500 font-medium">Duration (minutes)</div>
+                {editingFields['duration'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input
+                      type="number"
+                      value={editValues.duration || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, duration: Number(e.target.value) }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('duration')} disabled={isSaving['duration']}>
+                      {isSaving['duration'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('duration')}><X className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.duration || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('duration')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-gray-500 font-medium">Created By</div>
+                {editingFields['createdBy'] ? (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input
+                      value={editValues.createdBy || ''}
+                      onChange={e => setEditValues(prev => ({ ...prev, createdBy: e.target.value }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('createdBy')} disabled={isSaving['createdBy']}>
+                      {isSaving['createdBy'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('createdBy')}><X className="h-4 w-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-1">
+                    <span>{session.createdBy || '-'}</span>
+                    <Button variant="ghost" size="sm" className="ml-2" onClick={() => handleEdit('createdBy')}><Edit className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

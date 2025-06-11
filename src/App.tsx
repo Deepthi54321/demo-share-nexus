@@ -17,6 +17,12 @@ import MySessions from './pages/MySessions';
 import MyProgress from './pages/MyProgress';
 import Notifications from './pages/Notifications';
 import NotFound from './pages/NotFound';
+// Settings pages
+import ProfileSettings from './pages/settings/Profile';
+import TeamSettings from './pages/settings/Team';
+import NotificationSettings from './pages/settings/Notifications';
+import ApiKeysSettings from './pages/settings/ApiKeys';
+import AdvancedSettings from './pages/settings/Advanced';
 import './App.css';
 
 function App() {
@@ -35,6 +41,11 @@ function App() {
                   <Route path="/user-profile/:userId" element={<UserProfile />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/settings/profile" element={<ProfileSettings />} />
+                  <Route path="/settings/team" element={<TeamSettings />} />
+                  <Route path="/settings/notifications" element={<NotificationSettings />} />
+                  <Route path="/settings/api-keys" element={<ApiKeysSettings />} />
+                  <Route path="/settings/advanced" element={<AdvancedSettings />} />
                   <Route path="/my-sessions" element={<MySessions />} />
                   <Route path="/my-progress" element={<MyProgress />} />
                   <Route path="/notifications" element={<Notifications />} />

@@ -305,7 +305,7 @@ const Analytics = () => {
           </Card>
 
           {/* Demo Types Distribution */}
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+          {/* <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Activity className="h-5 w-5 mr-2 text-green-600" />
@@ -345,7 +345,7 @@ const Analytics = () => {
                 ))}
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         {/* User Engagement Chart */}

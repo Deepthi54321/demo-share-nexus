@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Users, User, Home, BarChart3, Settings, PanelLeft, Bell, Key, ChevronDown } from 'lucide-react';
@@ -11,12 +12,6 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
 
 export const AppSidebar: React.FC = () => {
   const { user } = useAuth();
@@ -101,31 +96,31 @@ export const AppSidebar: React.FC = () => {
             {isSettingsOpen && (
               <div className="pl-4 mt-1 space-y-1">
                 <SidebarMenuButton
-                  onClick={() => navigate('/settings?tab=profile')}
+                  onClick={() => navigate('/settings/profile')}
                   className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
                 >
                   <User className="mr-2 h-4 w-4 text-slate-500" /> Profile
                 </SidebarMenuButton>
                 <SidebarMenuButton
-                  onClick={() => navigate('/settings?tab=team')}
+                  onClick={() => navigate('/settings/team')}
                   className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
                 >
                   <Users className="mr-2 h-4 w-4 text-slate-500" /> Team
                 </SidebarMenuButton>
                 <SidebarMenuButton
-                  onClick={() => navigate('/settings?tab=notifications')}
+                  onClick={() => navigate('/settings/notifications')}
                   className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
                 >
                   <Bell className="mr-2 h-4 w-4 text-slate-500" /> Notifications
                 </SidebarMenuButton>
                 <SidebarMenuButton
-                  onClick={() => navigate('/settings?tab=api')}
+                  onClick={() => navigate('/settings/api-keys')}
                   className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
                 >
                   <Key className="mr-2 h-4 w-4 text-slate-500" /> API Keys
                 </SidebarMenuButton>
                 <SidebarMenuButton
-                  onClick={() => navigate('/settings?tab=advanced')}
+                  onClick={() => navigate('/settings/advanced')}
                   className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
                 >
                   <Settings className="mr-2 h-4 w-4 text-slate-500" /> Advanced
