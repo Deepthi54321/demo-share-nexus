@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Plus, Search, UserCheck, UserX, Mail, Phone, Calendar, Edit, Trash2, Shield, Award, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,26 +10,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Layout } from '../components/Layout';
-import { AddUserModal } from '../components/AddUserModal';
+import { AddUserModal, EditUserModal } from '../components/AddUserModal';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'employee';
-  status: 'active' | 'inactive' | 'pending';
-  joinDate: string;
-  lastLogin: string;
-  department: string;
-  sessionsAttended: number;
-  sessionsCreated: number;
-  totalHours: number;
-  skillLevel: 'Beginner' | 'Intermediate' | 'Advanced';
-  phone?: string;
-  avatar?: string;
-}
+import { userApi, User } from '../services/api';
+import { DeleteConfirmationModal } from '../components/DeleteConfirmationModal';
 
 const UserManagement = () => {
   const { toast } = useToast();
@@ -39,98 +24,37 @@ const UserManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [skillLevelFilter, setSkillLevelFilter] = useState('all');
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      name: 'John Admin',
-      email: 'admin@demo.com',
-      role: 'admin',
-      status: 'active',
-      joinDate: '2023-01-15',
-      lastLogin: '2024-01-12',
-      department: 'Engineering',
-      sessionsAttended: 25,
-      sessionsCreated: 15,
-      totalHours: 120,
-      skillLevel: 'Advanced',
-      phone: '+1 (555) 123-4567'
-    },
-    {
-      id: '2',
-      name: 'Jane Employee',
-      email: 'employee@demo.com',
-      role: 'employee',
-      status: 'active',
-      joinDate: '2023-06-10',
-      lastLogin: '2024-01-11',
-      department: 'Engineering',
-      sessionsAttended: 12,
-      sessionsCreated: 0,
-      totalHours: 48,
-      skillLevel: 'Intermediate',
-      phone: '+1 (555) 987-6543'
-    },
-    {
-      id: '3',
-      name: 'Alice Smith',
-      email: 'alice@demo.com',
-      role: 'employee',
-      status: 'active',
-      joinDate: '2023-09-20',
-      lastLogin: '2024-01-10',
-      department: 'Design',
-      sessionsAttended: 8,
-      sessionsCreated: 2,
-      totalHours: 32,
-      skillLevel: 'Beginner',
-      phone: '+1 (555) 456-7890'
-    },
-    {
-      id: '4',
-      name: 'Bob Wilson',
-      email: 'bob@demo.com',
-      role: 'employee',
-      status: 'inactive',
-      joinDate: '2023-03-05',
-      lastLogin: '2023-12-15',
-      department: 'Marketing',
-      sessionsAttended: 5,
-      sessionsCreated: 1,
-      totalHours: 20,
-      skillLevel: 'Beginner'
-    },
-    {
-      id: '5',
-      name: 'Sarah Johnson',
-      email: 'sarah@demo.com',
-      role: 'employee',
-      status: 'pending',
-      joinDate: '2024-01-01',
-      lastLogin: '2024-01-01',
-      department: 'Marketing',
-      sessionsAttended: 0,
-      sessionsCreated: 0,
-      totalHours: 0,
-      skillLevel: 'Beginner',
-      phone: '+1 (555) 111-2222'
-    },
-    {
-      id: '6',
-      name: 'Mike Davis',
-      email: 'mike@demo.com',
-      role: 'admin',
-      status: 'active',
-      joinDate: '2023-02-20',
-      lastLogin: '2024-01-09',
-      department: 'Operations',
-      sessionsAttended: 18,
-      sessionsCreated: 8,
-      totalHours: 85,
-      skillLevel: 'Advanced',
-      phone: '+1 (555) 333-4444'
+  // Fetch users on component mount
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Function to fetch users
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const fetchedUsers = await userApi.getAll();
+      setUsers(fetchedUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch users. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const departments = Array.from(new Set(users.map(user => user.department)));
 
@@ -146,9 +70,50 @@ const UserManagement = () => {
     return matchesSearch && matchesRole && matchesStatus && matchesDepartment && matchesSkillLevel;
   });
 
-  const handleAddUser = (newUser: User) => {
-    setUsers(prev => [...prev, newUser]);
+  const handleAddUser = async (userData: Omit<User, 'id'>) => {
+    try {
+      const newUserData = {
+        ...userData,
+        status: userData.status || 'active',
+        sessionsAttended: userData.sessionsAttended ?? 0,
+        sessionsCreated: userData.sessionsCreated ?? 0,
+        totalHours: 0,
+        joinDate: new Date().toISOString().split('T')[0],
+        lastLogin: new Date().toISOString(),
+        avatar: userData.avatar || ''
+      };
+  
+      // Create the user via API
+      const createdUser = await userApi.create(newUserData);
+  
+      // Immediately update the local state with the new user
+      setUsers(prevUsers => [...prevUsers, createdUser]);
+  
+      toast({
+        title: "Success",
+        description: `${createdUser.name} has been added successfully.`,
+      });
+  
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      
+      // If the error is due to a conflict (409), show a user-friendly message
+      if (error.response?.status === 409) {
+        toast({
+          title: "Error",
+          description: "This email is already in use. Please try another one.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.data?.message || "Failed to create user. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
   };
+  
 
   const handleExportUsers = () => {
     const csvContent = [
@@ -180,8 +145,19 @@ const UserManagement = () => {
     });
   };
 
-  const handleUserNameClick = (userId: string) => {
-    navigate(`/user-profile/${userId}`);
+  const handleUserNameClick = async (userId: string) => {
+    try {
+      // Optionally fetch the latest user data before navigation
+      await userApi.getById(userId);
+      navigate(`/user-profile/${userId}`);
+    } catch (error: any) {
+      console.error('Error fetching user details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load user details. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -221,30 +197,65 @@ const UserManagement = () => {
 
   const handleEditUser = (userId: string) => {
     const user = users.find(u => u.id === userId);
-    if (user) {
-      // In a real app, this would open an edit modal with form fields
-      const newName = prompt('Edit user name:', user.name);
-      if (newName && newName !== user.name) {
-        setUsers(prev => prev.map(u => 
-          u.id === userId ? { ...u, name: newName } : u
-        ));
-        toast({
-          title: "User Updated",
-          description: `User "${user.name}" has been updated to "${newName}".`,
-        });
-      }
+    if (!user) return;
+    setEditingUser(user);
+    setEditModalOpen(true);
+  };
+
+  const handleEditUserSubmit = async (updatedUser: User) => {
+    setEditLoading(true);
+    try {
+      const result = await userApi.update(updatedUser.id, updatedUser);
+      setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? result : u));
+      setEditModalOpen(false);
+      setEditingUser(null);
+      toast({
+        title: "Success",
+        description: `User "${result.name}" has been updated successfully.`,
+      });
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast({
+        title: "Error",
+        description: error.data?.message || "Failed to update user. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setEditLoading(false);
     }
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     const user = users.find(u => u.id === userId);
-    if (user && confirm(`Are you sure you want to delete user "${user.name}"?`)) {
-      setUsers(prev => prev.filter(u => u.id !== userId));
+    if (user) {
+      setUserToDelete(user);
+      setDeleteModalOpen(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+    
+    setDeleteLoading(true);
+    try {
+      await userApi.delete(userToDelete.id);
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      setDeleteModalOpen(false);
+      setUserToDelete(null);
       toast({
         title: "User Deleted",
-        description: `User "${user.name}" has been removed from the system.`,
+        description: `"${userToDelete.name}" has been deleted successfully.`,
         variant: "destructive"
       });
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: error.data?.message || "Failed to delete user. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -260,6 +271,16 @@ const UserManagement = () => {
   const activeUsers = users.filter(u => u.status === 'active').length;
   const adminUsers = users.filter(u => u.role === 'admin').length;
   const avgSessionsPerUser = users.length > 0 ? Math.round(users.reduce((sum, u) => sum + u.sessionsAttended, 0) / users.length) : 0;
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading users...</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -418,7 +439,8 @@ const UserManagement = () => {
                       <TableHead>Role</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Sessions</TableHead>
+                      <TableHead>Sessions Attended</TableHead>
+                      <TableHead>Sessions Created</TableHead>
                       <TableHead>Skill Level</TableHead>
                       <TableHead>Last Login</TableHead>
                       <TableHead>Actions</TableHead>
@@ -439,53 +461,23 @@ const UserManagement = () => {
                               >
                                 {user.name}
                               </div>
-                              <div className="text-sm text-gray-500 flex items-center">
-                                <Mail className="h-3 w-3 mr-1" />
-                                {user.email}
-                              </div>
-                              {user.phone && (
-                                <div className="text-sm text-gray-500 flex items-center">
-                                  <Phone className="h-3 w-3 mr-1" />
-                                  {user.phone}
-                                </div>
-                              )}
+                              <div className="text-xs text-gray-500">{user.email}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>{getRoleBadge(user.role)}</TableCell>
                         <TableCell>{user.department}</TableCell>
                         <TableCell>{getStatusBadge(user.status)}</TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="text-sm font-medium">Attended: {user.sessionsAttended}</div>
-                            {user.role === 'admin' && (
-                              <div className="text-sm text-gray-500">Created: {user.sessionsCreated}</div>
-                            )}
-                          </div>
-                        </TableCell>
+                        <TableCell>{user.sessionsAttended}</TableCell>
+                        <TableCell>{user.sessionsCreated}</TableCell>
                         <TableCell>{getSkillBadge(user.skillLevel)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {new Date(user.lastLogin).toLocaleDateString()}
-                          </div>
-                        </TableCell>
+                        <TableCell>{new Date(user.lastLogin).toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="flex space-x-1">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleEditUser(user.id)}
-                            >
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => handleEditUser(user.id)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                              onClick={() => handleDeleteUser(user.id)}
-                            >
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" onClick={() => handleDeleteUser(user.id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -635,6 +627,21 @@ const UserManagement = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <EditUserModal
+        open={editModalOpen}
+        setOpen={setEditModalOpen}
+        user={editingUser}
+        onEditUser={handleEditUserSubmit}
+        loading={editLoading}
+      />
+      <DeleteConfirmationModal
+        open={deleteModalOpen}
+        setOpen={setDeleteModalOpen}
+        title="Delete User"
+        description={`Are you sure you want to delete "${userToDelete?.name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+      />
     </Layout>
   );
 };

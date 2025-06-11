@@ -1,38 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Save, X, Calendar, Clock, Users, MapPin, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layout } from '../components/Layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Edit, Save, X, Loader2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Layout } from '../components/Layout';
+import { sessionApi, type DemoSession } from '../services/api';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-interface SessionDetails {
-  id: string;
-  title: string;
-  technology: string;
-  date: string;
-  time: string;
-  description: string;
-  createdBy: string;
-  attendees: number;
-  maxAttendees: number;
-  status: 'upcoming' | 'completed' | 'cancelled';
-  location: string;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
-  prerequisites?: string;
-  duration?: string;
-  sprintName: string;
-  storyPoints: number;
-  numberOfTasks: number;
-  numberOfBugs: number;
-  currentStatus: 'Planning' | 'In Progress' | 'Testing' | 'Completed' | 'On Hold';
-  rating?: number;
-  feedback?: string;
-  type: 'Project-based' | 'Product-based';
+interface ExtendedDemoSession extends DemoSession {
+  currentStatus?: 'Planning' | 'In Progress' | 'Testing' | 'Completed' | 'On Hold';
 }
 
 const SessionDetail = () => {
@@ -40,189 +22,179 @@ const SessionDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [session, setSession] = useState<SessionDetails | null>(null);
-  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
-  const [editValues, setEditValues] = useState<Partial<SessionDetails>>({});
+  const [session, setSession] = useState<ExtendedDemoSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState<{ [key: string]: boolean }>({});
+  const [editingFields, setEditingFields] = useState<{ [key: string]: boolean }>({});
+  const [editValues, setEditValues] = useState<Partial<ExtendedDemoSession>>({});
 
-  // Mock data - in a real app, this would come from an API
-  useEffect(() => {
-    const mockSession: SessionDetails = {
-      id: sessionId || '1',
-      title: 'React Hooks Deep Dive',
-      technology: 'React',
-      date: '2024-01-15',
-      time: '14:00',
-      description: 'Advanced concepts in React Hooks including custom hooks and performance optimization.',
-      createdBy: 'John Admin',
-      attendees: 8,
-      maxAttendees: 15,
-      status: 'upcoming',
-      location: 'Conference Room A',
-      difficulty: 'Advanced',
-      prerequisites: 'Basic React knowledge',
-      duration: '120',
-      sprintName: 'Sprint 2024-01',
-      storyPoints: 8,
-      numberOfTasks: 12,
-      numberOfBugs: 3,
-      currentStatus: 'In Progress',
-      rating: 4.5,
-      feedback: 'Great session with excellent examples and hands-on exercises.',
-      type: 'Project-based'
-    };
-    setSession(mockSession);
-    setEditValues(mockSession);
-  }, [sessionId]);
-
-  const startEditing = (field: string) => {
-    setEditingFields(prev => new Set([...prev, field]));
-  };
-
-  const cancelEditing = (field: string) => {
-    setEditingFields(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(field);
-      return newSet;
-    });
-    if (session) {
-      setEditValues(prev => ({ ...prev, [field]: session[field as keyof SessionDetails] }));
+  // Convert backend format to frontend format for currentStatus
+  const convertBackendToFrontend = (backendStatus: string): 'Planning' | 'In Progress' | 'Testing' | 'Completed' | 'On Hold' => {
+    switch (backendStatus) {
+      case 'In_Progress':
+        return 'In Progress';
+      case 'On_Hold':
+        return 'On Hold';
+      case 'Planning':
+        return 'Planning';
+      case 'Testing':
+        return 'Testing';
+      case 'Completed':
+        return 'Completed';
+      default:
+        return 'Planning';
     }
   };
 
-  const saveField = (field: string) => {
+  // Convert frontend format to backend format for currentStatus
+  const convertFrontendToBackend = (frontendStatus: 'Planning' | 'In Progress' | 'Testing' | 'Completed' | 'On Hold'): string => {
+    switch (frontendStatus) {
+      case 'In Progress':
+        return 'In_Progress';
+      case 'On Hold':
+        return 'On_Hold';
+      default:
+        return frontendStatus;
+    }
+  };
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      setIsLoading(true);
+      try {
+        if (!sessionId) {
+          throw new Error("Session ID is missing.");
+        }
+        const fetchedSession = await sessionApi.get(sessionId);
+
+        // Convert the API response to frontend format before setting state
+        const convertedSession: ExtendedDemoSession = {
+          ...fetchedSession,
+          currentStatus: fetchedSession.currentStatus ? convertBackendToFrontend(fetchedSession.currentStatus as string) : 'Planning'
+        };
+
+        setSession(convertedSession);
+        setEditValues(convertedSession);
+      } catch (error) {
+        console.error("Failed to fetch session:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load session details. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSession();
+  }, [sessionId, toast]);
+
+  const handleEdit = (field: string) => {
+    setEditingFields(prev => ({ ...prev, [field]: true }));
+  };
+
+  const handleCancel = (field: string) => {
+    setEditingFields(prev => {
+      const newState = { ...prev };
+      delete newState[field];
+      return newState;
+    });
+    setEditValues(session || {});
+  };
+
+  const handleSave = async (field: string) => {
     if (!session) return;
 
-    const updatedSession = { ...session, [field]: editValues[field as keyof SessionDetails] };
-    setSession(updatedSession);
-    setEditingFields(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(field);
-      return newSet;
-    });
+    console.log(`Saving field: ${field}`);
+    console.log('Current editValues:', editValues);
+    console.log('Current session:', session);
 
-    toast({
-      title: "Field Updated",
-      description: `${field.charAt(0).toUpperCase() + field.slice(1)} has been saved successfully.`,
-    });
-  };
+    try {
+      setIsSaving(prev => ({ ...prev, [field]: true }));
 
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      'upcoming': 'bg-blue-100 text-blue-800 border-blue-300',
-      'completed': 'bg-green-100 text-green-800 border-green-300',
-      'cancelled': 'bg-red-100 text-red-800 border-red-300'
-    };
-    return <Badge className={colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>{status}</Badge>;
-  };
+      // Prepare the data to send to the API
+      let updateData: any = {};
+      
+      if (field === 'currentStatus') {
+        // Convert frontend format to backend format for API
+        const backendStatus = convertFrontendToBackend(editValues.currentStatus!);
+        updateData.currentStatus = backendStatus;
+        console.log('Converted status for API:', backendStatus);
+      } else {
+        updateData[field] = editValues[field as keyof typeof editValues];
+      }
 
-  const getCurrentStatusBadge = (status: string) => {
-    const colors = {
-      'Planning': 'bg-purple-100 text-purple-800',
-      'In Progress': 'bg-blue-100 text-blue-800',
-      'Testing': 'bg-yellow-100 text-yellow-800',
-      'Completed': 'bg-green-100 text-green-800',
-      'On Hold': 'bg-red-100 text-red-800'
-    };
-    return <Badge className={colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>{status}</Badge>;
-  };
+      console.log('Sending update data to API:', updateData);
 
-  const getDifficultyBadge = (difficulty: string) => {
-    const colors = {
-      'Beginner': 'bg-green-100 text-green-800',
-      'Intermediate': 'bg-yellow-100 text-yellow-800',
-      'Advanced': 'bg-red-100 text-red-800'
-    };
-    return <Badge className={colors[difficulty as keyof typeof colors]}>{difficulty}</Badge>;
-  };
+      // Call the API
+      const result = await sessionApi.update(session.id, updateData);
+      console.log('Received response from API:', result);
+      
+      // Convert the API response to frontend format before updating state
+      const convertedResult: Partial<ExtendedDemoSession> = {
+        ...result
+      };
+      
+      if (result.currentStatus) {
+        convertedResult.currentStatus = convertBackendToFrontend(result.currentStatus as string);
+      }
+      
+      // Update the session state with the converted response data
+      setSession(prev => {
+        if (!prev) return null;
+        const updatedSession: ExtendedDemoSession = {
+          ...prev,
+          ...convertedResult
+        };
+        console.log('Updated session state:', updatedSession);
+        return updatedSession;
+      });
 
-  const getTypeBadge = (type: string) => {
-    const colors = {
-      'Project-based': 'bg-indigo-100 text-indigo-800',
-      'Product-based': 'bg-emerald-100 text-emerald-800'
-    };
-    return <Badge className={colors[type as keyof typeof colors]}>{type}</Badge>;
-  };
+      // Update editValues to match the new session data
+      setEditValues(prev => ({
+        ...prev,
+        ...convertedResult
+      }));
 
-  const renderEditableField = (field: string, value: any, type: 'text' | 'number' | 'textarea' | 'select' = 'text', options?: string[]) => {
-    const isEditing = editingFields.has(field);
-    
-    if (!isEditing) {
-      return (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-900">{value}</span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0"
-            onClick={() => startEditing(field)}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-        </div>
-      );
+      setEditingFields(prev => {
+        const newState = { ...prev };
+        delete newState[field];
+        return newState;
+      });
+
+      toast({
+        title: "Session Updated",
+        description: `${field.charAt(0).toUpperCase() + field.slice(1)} has been updated successfully.`,
+      });
+
+    } catch (error) {
+      console.error(`Failed to save ${field}:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to update ${field}. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(prev => ({ ...prev, [field]: false }));
     }
-
-    return (
-      <div className="flex items-center space-x-2">
-        {type === 'textarea' ? (
-          <Textarea
-            value={editValues[field as keyof SessionDetails] || ''}
-            onChange={(e) => setEditValues(prev => ({ ...prev, [field]: e.target.value }))}
-            className="flex-1"
-          />
-        ) : type === 'select' && options ? (
-          <Select
-            value={editValues[field as keyof SessionDetails] as string || ''}
-            onValueChange={(value) => setEditValues(prev => ({ ...prev, [field]: value }))}
-          >
-            <SelectTrigger className="flex-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map(option => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input
-            type={type}
-            value={editValues[field as keyof SessionDetails] || ''}
-            onChange={(e) => setEditValues(prev => ({ 
-              ...prev, 
-              [field]: type === 'number' ? parseInt(e.target.value) || 0 : e.target.value 
-            }))}
-            className="flex-1"
-          />
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 w-8 p-0 text-green-600"
-          onClick={() => saveField(field)}
-        >
-          <Save className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 w-8 p-0 text-red-600"
-          onClick={() => cancelEditing(field)}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    );
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </Layout>
+    );
+  }
 
   if (!session) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900">Loading...</h2>
-            <p className="text-gray-500">Please wait while we load the session details.</p>
-          </div>
+        <div className="flex items-center justify-center h-full">
+          <p className="text-lg">Session not found.</p>
         </div>
       </Layout>
     );
@@ -231,234 +203,278 @@ const SessionDetail = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/demo-sessions')}
-            className="flex items-center space-x-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Sessions</span>
+        <div>
+          <Button variant="ghost" onClick={() => navigate(-1)}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{session.title}</h1>
-            <p className="text-gray-600 mt-1">Session Details</p>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900">{session.title}</h1>
+          <p className="text-gray-600 mt-1">View and manage session details</p>
         </div>
 
-        {/* Session Overview */}
         <Card>
           <CardHeader>
-            <CardTitle>Session Overview</CardTitle>
+            <div className="flex justify-between items-start">
+              <CardTitle>Session Information</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Technology</p>
-                <Badge variant="outline">{session.technology}</Badge>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Type</p>
-                {editingFields.has('type') ? (
+                <Label htmlFor="technology">Technology</Label>
+                {editingFields['technology'] ? (
                   <div className="flex items-center space-x-2">
-                    <Select
-                      value={editValues.type || session.type}
-                      onValueChange={(value) => setEditValues(prev => ({ ...prev, type: value as any }))}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Project-based">Project-based</SelectItem>
-                        <SelectItem value="Product-based">Product-based</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 w-8 p-0 text-green-600"
-                      onClick={() => saveField('type')}
-                    >
-                      <Save className="h-4 w-4" />
+                    <Input
+                      id="technology"
+                      value={editValues.technology || ''}
+                      onChange={(e) => setEditValues(prev => ({ ...prev, technology: e.target.value }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('technology')} disabled={isSaving['technology']}>
+                      {isSaving['technology'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 w-8 p-0 text-red-600"
-                      onClick={() => cancelEditing('type')}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('technology')}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between w-40">
-                    {getTypeBadge(session.type)}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => startEditing('type')}
-                    >
+                  <div className="flex items-center justify-between">
+                    <p>{session.technology}</p>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit('technology')}>
                       <Edit className="h-4 w-4" />
                     </Button>
                   </div>
                 )}
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Status</p>
-                {getStatusBadge(session.status)}
+                <Label htmlFor="date">Date</Label>
+                {editingFields['date'] ? (
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="date"
+                      type="date"
+                      value={editValues.date || ''}
+                      onChange={(e) => setEditValues(prev => ({ ...prev, date: e.target.value }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('date')} disabled={isSaving['date']}>
+                      {isSaving['date'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('date')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p>{session.date}</p>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit('date')}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Difficulty</p>
-                {getDifficultyBadge(session.difficulty)}
+                <Label htmlFor="time">Time</Label>
+                {editingFields['time'] ? (
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="time"
+                      type="time"
+                      value={editValues.time || ''}
+                      onChange={(e) => setEditValues(prev => ({ ...prev, time: e.target.value }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('time')} disabled={isSaving['time']}>
+                      {isSaving['time'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('time')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p>{session.time}</p>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit('time')}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">{new Date(session.date).toLocaleDateString()}</span>
+              <div>
+                <Label htmlFor="location">Location</Label>
+                {editingFields['location'] ? (
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="location"
+                      value={editValues.location || ''}
+                      onChange={(e) => setEditValues(prev => ({ ...prev, location: e.target.value }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('location')} disabled={isSaving['location']}>
+                      {isSaving['location'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('location')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p>{session.location}</p>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit('location')}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">{session.time}</span>
+              <div>
+                <Label htmlFor="maxAttendees">Max Attendees</Label>
+                {editingFields['maxAttendees'] ? (
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="maxAttendees"
+                      type="number"
+                      value={editValues.maxAttendees?.toString() || ''}
+                      onChange={(e) => setEditValues(prev => ({ ...prev, maxAttendees: Number(e.target.value) }))}
+                    />
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('maxAttendees')} disabled={isSaving['maxAttendees']}>
+                      {isSaving['maxAttendees'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('maxAttendees')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p>{session.maxAttendees}</p>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit('maxAttendees')}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">{session.location}</span>
+              <div>
+                <Label htmlFor="difficulty">Difficulty</Label>
+                {editingFields['difficulty'] ? (
+                  <div className="flex items-center space-x-2">
+                    <Select onValueChange={(value) => setEditValues(prev => ({ ...prev, difficulty: value as 'Beginner' | 'Intermediate' | 'Advanced' }))}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder={editValues.difficulty || "Select difficulty"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Beginner">Beginner</SelectItem>
+                        <SelectItem value="Intermediate">Intermediate</SelectItem>
+                        <SelectItem value="Advanced">Advanced</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('difficulty')} disabled={isSaving['difficulty']}>
+                      {isSaving['difficulty'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('difficulty')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p>{session.difficulty}</p>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit('difficulty')}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">{session.attendees}/{session.maxAttendees} attendees</span>
+              <div>
+                <Label htmlFor="type">Type</Label>
+                {editingFields['type'] ? (
+                  <div className="flex items-center space-x-2">
+                    <Select onValueChange={(value) => setEditValues(prev => ({ ...prev, type: value as 'PROJECT_BASED' | 'PRODUCT_BASED' }))}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder={editValues.type || "Select type"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PROJECT_BASED">Project Based</SelectItem>
+                        <SelectItem value="PRODUCT_BASED">Product Based</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('type')} disabled={isSaving['type']}>
+                      {isSaving['type'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('type')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p>{session.type}</p>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit('type')}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              {session.rating && (
-                <div className="flex items-center space-x-2">
-                  <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                  <span className="text-sm">{session.rating}/5</span>
-                </div>
-              )}
+              <div>
+                <Label htmlFor="currentStatus">Current Status</Label>
+                {editingFields['currentStatus'] ? (
+                  <div className="flex items-center space-x-2">
+                    <Select onValueChange={(value) => setEditValues(prev => ({ ...prev, currentStatus: value as 'Planning' | 'In Progress' | 'Testing' | 'Completed' | 'On Hold' }))}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder={editValues.currentStatus || "Select status"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Planning">Planning</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Testing">Testing</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="On Hold">On Hold</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('currentStatus')} disabled={isSaving['currentStatus']}>
+                      {isSaving['currentStatus'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('currentStatus')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <Badge className={cn(
+                      "bg-blue-100 text-blue-800",
+                      session.currentStatus === 'Planning' && "bg-blue-100 text-blue-800",
+                      session.currentStatus === 'In Progress' && "bg-yellow-100 text-yellow-800",
+                      session.currentStatus === 'Testing' && "bg-purple-100 text-purple-800",
+                      session.currentStatus === 'Completed' && "bg-green-100 text-green-800",
+                      session.currentStatus === 'On Hold' && "bg-red-100 text-red-800"
+                    )}>
+                      {session.currentStatus}
+                    </Badge>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit('currentStatus')}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Sprint Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Sprint Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">Sprint Name</p>
-                {renderEditableField('sprintName', session.sprintName)}
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">Story Points</p>
-                {renderEditableField('storyPoints', session.storyPoints, 'number')}
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">Number of Tasks</p>
-                {renderEditableField('numberOfTasks', session.numberOfTasks, 'number')}
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">Number of Bugs</p>
-                {renderEditableField('numberOfBugs', session.numberOfBugs, 'number')}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Current Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Project Status</CardTitle>
-          </CardHeader>
-          <CardContent>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-2">Current Status</p>
-              {editingFields.has('currentStatus') ? (
-                <div className="flex items-center space-x-2">
-                  <Select
-                    value={editValues.currentStatus || session.currentStatus}
-                    onValueChange={(value) => setEditValues(prev => ({ ...prev, currentStatus: value as any }))}
-                  >
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Planning">Planning</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Testing">Testing</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="On Hold">On Hold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 w-8 p-0 text-green-600"
-                    onClick={() => saveField('currentStatus')}
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 w-8 p-0 text-red-600"
-                    onClick={() => cancelEditing('currentStatus')}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+              <Label htmlFor="description">Description</Label>
+              {editingFields['description'] ? (
+                <div className="flex flex-col space-y-2">
+                  <Textarea
+                    id="description"
+                    value={editValues.description || ''}
+                    onChange={(e) => setEditValues(prev => ({ ...prev, description: e.target.value }))}
+                  />
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleSave('description')} disabled={isSaving['description']}>
+                      {isSaving['description'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleCancel('description')}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between w-48">
-                  {getCurrentStatusBadge(session.currentStatus)}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => startEditing('currentStatus')}
-                  >
+                <div className="flex items-center justify-between">
+                  <p>{session.description}</p>
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit('description')}>
                     <Edit className="h-4 w-4" />
                   </Button>
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Session Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Session Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">Description</p>
-                {renderEditableField('description', session.description, 'textarea')}
-              </div>
-              {session.prerequisites && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-2">Prerequisites</p>
-                  {renderEditableField('prerequisites', session.prerequisites, 'textarea')}
-                </div>
-              )}
-              {session.feedback && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-2">Feedback</p>
-                  {renderEditableField('feedback', session.feedback, 'textarea')}
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-2">Duration (minutes)</p>
-                  {renderEditableField('duration', session.duration, 'number')}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-2">Created By</p>
-                  <span className="text-sm text-gray-900">{session.createdBy}</span>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>

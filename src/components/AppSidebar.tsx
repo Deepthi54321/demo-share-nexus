@@ -1,7 +1,6 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Users, User, Home, BarChart3, Settings, PanelLeft } from 'lucide-react';
+import { Calendar, Users, User, Home, BarChart3, Settings, PanelLeft, Bell, Key, ChevronDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -12,18 +11,24 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 
 export const AppSidebar: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const adminMenuItems = [
     { icon: Home, label: 'Dashboard', href: '/' },
     { icon: Calendar, label: 'Demo Sessions', href: '/demo-sessions' },
     { icon: Users, label: 'User Management', href: '/user-management' },
     { icon: BarChart3, label: 'Analytics', href: '/analytics' },
-    { icon: Settings, label: 'Settings', href: '/settings' },
   ];
 
   const employeeMenuItems = [
@@ -81,6 +86,53 @@ export const AppSidebar: React.FC = () => {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+          {/* Settings Dropdown */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              isActive={location.pathname.startsWith('/settings')}
+              tooltip="Settings"
+              className="w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-300 group relative overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2 text-slate-700 hover:bg-gradient-to-r hover:from-slate-50 hover:to-slate-100 hover:text-slate-900 border border-transparent hover:border-slate-200/50"
+            >
+              <Settings className="h-4 w-4 text-slate-500 group-hover:text-slate-700" />
+              <span className="font-medium group-data-[collapsible=icon]:hidden">Settings</span>
+              <ChevronDown className={`ml-auto h-4 w-4 transition-transform duration-200 ${isSettingsOpen ? 'rotate-180' : ''}`} />
+            </SidebarMenuButton>
+            {isSettingsOpen && (
+              <div className="pl-4 mt-1 space-y-1">
+                <SidebarMenuButton
+                  onClick={() => navigate('/settings?tab=profile')}
+                  className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
+                >
+                  <User className="mr-2 h-4 w-4 text-slate-500" /> Profile
+                </SidebarMenuButton>
+                <SidebarMenuButton
+                  onClick={() => navigate('/settings?tab=team')}
+                  className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
+                >
+                  <Users className="mr-2 h-4 w-4 text-slate-500" /> Team
+                </SidebarMenuButton>
+                <SidebarMenuButton
+                  onClick={() => navigate('/settings?tab=notifications')}
+                  className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
+                >
+                  <Bell className="mr-2 h-4 w-4 text-slate-500" /> Notifications
+                </SidebarMenuButton>
+                <SidebarMenuButton
+                  onClick={() => navigate('/settings?tab=api')}
+                  className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
+                >
+                  <Key className="mr-2 h-4 w-4 text-slate-500" /> API Keys
+                </SidebarMenuButton>
+                <SidebarMenuButton
+                  onClick={() => navigate('/settings?tab=advanced')}
+                  className="w-full justify-start px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100"
+                >
+                  <Settings className="mr-2 h-4 w-4 text-slate-500" /> Advanced
+                </SidebarMenuButton>
+              </div>
+            )}
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
     </Sidebar>

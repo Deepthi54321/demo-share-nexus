@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Bell, Settings, LogOut, User, Search } from 'lucide-react';
+import { Bell, Settings, LogOut, User, Search, Users, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -11,6 +10,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '../contexts/AuthContext';
@@ -88,20 +90,34 @@ export const Header: React.FC = () => {
             <DropdownMenuContent align="end" className="w-56 bg-white border border-slate-200 shadow-lg">
               <DropdownMenuLabel className="text-slate-900 font-semibold">My Account</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-slate-200" />
-              <DropdownMenuItem 
-                onClick={() => navigate('/settings')}
-                className="text-slate-700 hover:bg-slate-50 focus:bg-slate-50 cursor-pointer"
-              >
-                <User className="mr-3 h-4 w-4 text-slate-500" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => navigate('/settings')}
-                className="text-slate-700 hover:bg-slate-50 focus:bg-slate-50 cursor-pointer"
-              >
-                <Settings className="mr-3 h-4 w-4 text-slate-500" />
-                <span>Settings</span>
-              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Settings className="mr-3 h-4 w-4 text-slate-500" />
+                  <span>Settings</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => navigate('/settings?tab=profile')}>
+                    <User className="mr-3 h-4 w-4 text-slate-500" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings?tab=team')}>
+                    <Users className="mr-3 h-4 w-4 text-slate-500" />
+                    <span>Team</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings?tab=notifications')}>
+                    <Bell className="mr-3 h-4 w-4 text-slate-500" />
+                    <span>Notifications</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings?tab=api')}>
+                    <Key className="mr-3 h-4 w-4 text-slate-500" />
+                    <span>API Keys</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings?tab=advanced')}>
+                    <Settings className="mr-3 h-4 w-4 text-slate-500" />
+                    <span>Advanced</span>
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSeparator className="bg-slate-200" />
               <DropdownMenuItem 
                 onClick={handleLogout}

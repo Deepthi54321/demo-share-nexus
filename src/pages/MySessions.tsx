@@ -40,7 +40,7 @@ const MySessions = () => {
     maxAttendees: 10,
     location: '',
     difficulty: 'Beginner',
-    type: 'Project-based'
+    type: 'PROJECT_BASED'
   });
 
   // Fetch sessions on component mount (filter by current user's sessions)
@@ -80,13 +80,14 @@ const MySessions = () => {
 
   const getTypeBadge = (type: string) => {
     const colors = {
-      'Project-based': 'bg-indigo-100 text-indigo-800',
-      'Product-based': 'bg-emerald-100 text-emerald-800'
+      'PROJECT_BASED': 'bg-indigo-100 text-indigo-800',
+      'PRODUCT_BASED': 'bg-emerald-100 text-emerald-800'
     };
-    return <Badge className={colors[type as keyof typeof colors]}>{type}</Badge>;
+    const displayName = type === 'PROJECT_BASED' ? 'Project Based' : 'Product Based';
+    return <Badge className={colors[type as keyof typeof colors]}>{displayName}</Badge>;
   };
 
-  const handleTypeEdit = async (sessionId: string, newType: 'Project-based' | 'Product-based') => {
+  const handleTypeEdit = async (sessionId: string, newType: 'PROJECT_BASED' | 'PRODUCT_BASED') => {
     try {
       await sessionApi.update(sessionId, { type: newType });
       setMySessions(prev => prev.map(session => 
@@ -129,8 +130,9 @@ const MySessions = () => {
         status: 'upcoming',
         location: newSession.location || 'TBD',
         difficulty: newSession.difficulty as 'Beginner' | 'Intermediate' | 'Advanced',
-        type: newSession.type as 'Project-based' | 'Product-based',
-        createdBy: 'Current Admin'
+        type: newSession.type as 'PROJECT_BASED' | 'PRODUCT_BASED',
+        createdBy: 'Current Admin',
+        
       });
 
       setMySessions([...mySessions, session]);
@@ -143,7 +145,7 @@ const MySessions = () => {
         maxAttendees: 10,
         location: '',
         difficulty: 'Beginner',
-        type: 'Project-based'
+        type: 'PROJECT_BASED'
       });
       setIsCreateModalOpen(false);
       toast({
@@ -328,13 +330,13 @@ const MySessions = () => {
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="type" className="text-right">Type</Label>
-                    <Select value={newSession.type} onValueChange={(value) => setNewSession({...newSession, type: value as any})}>
+                    <Select value={newSession.type} onValueChange={(value) => setNewSession({...newSession, type: value as 'PROJECT_BASED' | 'PRODUCT_BASED'})}>
                       <SelectTrigger className="col-span-3">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Project-based">Project-based</SelectItem>
-                        <SelectItem value="Product-based">Product-based</SelectItem>
+                        <SelectItem value="PROJECT_BASED">Project Based</SelectItem>
+                        <SelectItem value="PRODUCT_BASED">Product Based</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -549,14 +551,14 @@ const MySessions = () => {
                         <div className="flex items-center space-x-1">
                           <Select
                             value={session.type}
-                            onValueChange={(value) => handleTypeEdit(session.id, value as any)}
+                            onValueChange={(value) => handleTypeEdit(session.id, value as 'PROJECT_BASED' | 'PRODUCT_BASED')}
                           >
                             <SelectTrigger className="w-32 h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Project-based">Project-based</SelectItem>
-                              <SelectItem value="Product-based">Product-based</SelectItem>
+                              <SelectItem value="PROJECT_BASED">Project Based</SelectItem>
+                              <SelectItem value="PRODUCT_BASED">Product Based</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button
@@ -594,7 +596,7 @@ const MySessions = () => {
                     <TableCell>
                       <div className="flex items-center space-x-1">
                         <Users className="h-4 w-4 text-gray-400" />
-                        <span>{session.attendees}/{session.maxAttendees}</span>
+                        <span>{session.maxAttendees}</span>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(session.status)}</TableCell>
@@ -744,14 +746,14 @@ const MySessions = () => {
                   <Label htmlFor="edit-type" className="text-right">Type</Label>
                   <Select 
                     value={selectedSession.type} 
-                    onValueChange={(value) => setSelectedSession({...selectedSession, type: value as any})}
+                    onValueChange={(value) => setSelectedSession({...selectedSession, type: value as 'PROJECT_BASED' | 'PRODUCT_BASED'})}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Project-based">Project-based</SelectItem>
-                      <SelectItem value="Product-based">Product-based</SelectItem>
+                      <SelectItem value="PROJECT_BASED">Project Based</SelectItem>
+                      <SelectItem value="PRODUCT_BASED">Product Based</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { Settings as SettingsIcon, User, Users, Bell, Key, Save, Shield, Mail, Phone, Building, User2, Edit, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings as SettingsIcon, User, Users, Bell, Key, Save, Shield, Mail, Phone, Building, User2, Edit, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,11 +10,32 @@ import { Switch } from '@/components/ui/switch';
 import { Layout } from '../components/Layout';
 import { useAdmin } from '../contexts/AdminContext';
 import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'react-router-dom';
+import { teamSettingsApi, type TeamSettings } from '../services/teamSettingsApi';
+import { notificationSettingsApi, type NotificationSettings } from '../services/notificationSettingsApi';
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from '@/components/ui/dialog';
 
 const Settings = () => {
-  const { adminProfile, updateAdminProfile } = useAdmin();
+  const { adminProfile, updateAdminProfile, isLoading: adminLoading } = useAdmin();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'profile';
+  const [activeTab, setActiveTab] = useState(defaultTab);
   
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'profile';
+    setActiveTab(tab);
+  }, [searchParams]);
+
   // Edit mode states for each tab
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingTeam, setIsEditingTeam] = useState(false);
@@ -25,40 +45,138 @@ const Settings = () => {
   // Local state for form inputs
   const [profileForm, setProfileForm] = useState(adminProfile);
   const [originalProfileForm, setOriginalProfileForm] = useState(adminProfile);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [teamSettings, setTeamSettings] = useState({
+  // Update form when adminProfile changes
+  useEffect(() => {
+    setProfileForm(adminProfile);
+    setOriginalProfileForm(adminProfile);
+  }, [adminProfile]);
+
+  // Team settings state with API integration
+  const [teamSettings, setTeamSettings] = useState<TeamSettings>({
     maxSessionsPerDay: '10',
     autoApproveRegistrations: true,
     requireManagerApproval: false,
     sessionReminderHours: '24'
   });
-  const [originalTeamSettings, setOriginalTeamSettings] = useState({
+  const [originalTeamSettings, setOriginalTeamSettings] = useState<TeamSettings>({
     maxSessionsPerDay: '10',
     autoApproveRegistrations: true,
     requireManagerApproval: false,
     sessionReminderHours: '24'
   });
+  const [teamSettingsId, setTeamSettingsId] = useState<string | null>(null);
+  const [isLoadingTeam, setIsLoadingTeam] = useState(false);
 
-  const [notificationSettings, setNotificationSettings] = useState({
+  // Notification settings state with API integration
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     emailNotifications: true,
     pushNotifications: true,
     sessionReminders: true,
     weeklyReports: false,
     marketingEmails: false
   });
-  const [originalNotificationSettings, setOriginalNotificationSettings] = useState({
+  const [originalNotificationSettings, setOriginalNotificationSettings] = useState<NotificationSettings>({
     emailNotifications: true,
     pushNotifications: true,
     sessionReminders: true,
     weeklyReports: false,
     marketingEmails: false
   });
+  const [notificationSettingsId, setNotificationSettingsId] = useState<string | null>(null);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
-  const [apiKeys] = useState([
+  // Load team settings from API
+  useEffect(() => {
+    const loadTeamSettings = async () => {
+      try {
+        setIsLoadingTeam(true);
+        const settings = await teamSettingsApi.getSettings();
+        if (settings.length > 0) {
+          const teamData = settings[0];
+          setTeamSettings(teamData);
+          setOriginalTeamSettings(teamData);
+          setTeamSettingsId(teamData.id || null);
+        }
+      } catch (error) {
+        console.error('Failed to load team settings:', error);
+      } finally {
+        setIsLoadingTeam(false);
+      }
+    };
+
+    loadTeamSettings();
+  }, []);
+
+  // Load notification settings from API
+  useEffect(() => {
+    const loadNotificationSettings = async () => {
+      try {
+        setIsLoadingNotifications(true);
+        const settings = await notificationSettingsApi.getSettings();
+        if (settings.length > 0) {
+          const notificationData = settings[0];
+          setNotificationSettings(notificationData);
+          setOriginalNotificationSettings(notificationData);
+          setNotificationSettingsId(notificationData.id || null);
+        }
+      } catch (error) {
+        console.error('Failed to load notification settings:', error);
+      } finally {
+        setIsLoadingNotifications(false);
+      }
+    };
+
+    loadNotificationSettings();
+  }, []);
+
+  // API keys state
+  const [apiKeys, setApiKeys] = useState([
     { id: '1', name: 'Production API', key: 'sk-***************8392', created: '2024-01-15', lastUsed: '2024-01-12' },
     { id: '2', name: 'Development API', key: 'sk-***************2847', created: '2024-01-20', lastUsed: '2024-01-11' }
   ]);
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+  const [editingApiKey, setEditingApiKey] = useState(null); // null for create, or apiKey object for edit
+  const [apiKeyForm, setApiKeyForm] = useState({ name: '', key: '', created: '', lastUsed: '' });
 
+  const openCreateApiKeyModal = () => {
+    setEditingApiKey(null);
+    setApiKeyForm({ name: '', key: '', created: new Date().toISOString().split('T')[0], lastUsed: new Date().toISOString().split('T')[0] });
+    setApiKeyModalOpen(true);
+  };
+
+  const openEditApiKeyModal = (apiKey) => {
+    setEditingApiKey(apiKey);
+    setApiKeyForm({ ...apiKey });
+    setApiKeyModalOpen(true);
+  };
+
+  const handleApiKeyFormChange = (e) => {
+    const { name, value } = e.target;
+    setApiKeyForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleApiKeyFormSave = () => {
+    if (editingApiKey) {
+      // Update existing
+      setApiKeys((prev) => prev.map((k) => (k.id === editingApiKey.id ? { ...k, ...apiKeyForm } : k)));
+    } else {
+      // Create new
+      setApiKeys((prev) => [
+        ...prev,
+        {
+          ...apiKeyForm,
+          id: Math.random().toString(36).substr(2, 9),
+          created: apiKeyForm.created || new Date().toISOString().split('T')[0],
+          lastUsed: apiKeyForm.lastUsed || new Date().toISOString().split('T')[0],
+        },
+      ]);
+    }
+    setApiKeyModalOpen(false);
+  };
+
+  // Advanced settings state
   const [advancedSettings, setAdvancedSettings] = useState({
     sessionTimeout: '30',
     maxFileSize: '10',
@@ -84,15 +202,28 @@ const Settings = () => {
     setIsEditingProfile(false);
   };
 
-  const handleProfileSave = () => {
-    updateAdminProfile(profileForm);
-    setIsEditingProfile(false);
-    toast({
-      title: "Profile Updated",
-      description: "Your profile settings have been saved and are now reflected throughout the application.",
-    });
+  const handleProfileSave = async () => {
+    try {
+      setIsSaving(true);
+      await updateAdminProfile(profileForm);
+      setIsEditingProfile(false);
+      toast({
+        title: "Profile Updated",
+        description: "Your profile settings have been saved and are now reflected throughout the application.",
+      });
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  // Updated team handlers with API integration
   const handleTeamEdit = () => {
     setIsEditingTeam(true);
     setOriginalTeamSettings({ ...teamSettings });
@@ -103,14 +234,41 @@ const Settings = () => {
     setIsEditingTeam(false);
   };
 
-  const handleTeamSave = () => {
-    setIsEditingTeam(false);
-    toast({
-      title: "Team Settings Saved",
-      description: "Team management settings have been updated successfully.",
-    });
+  const handleTeamSave = async () => {
+    try {
+      setIsSaving(true);
+      
+      if (teamSettingsId) {
+        // Update existing settings
+        const updatedSettings = await teamSettingsApi.updateSettings(teamSettingsId, teamSettings);
+        setTeamSettings(updatedSettings);
+        setOriginalTeamSettings(updatedSettings);
+      } else {
+        // Create new settings
+        const newSettings = await teamSettingsApi.createSettings(teamSettings);
+        setTeamSettings(newSettings);
+        setOriginalTeamSettings(newSettings);
+        setTeamSettingsId(newSettings.id || null);
+      }
+      
+      setIsEditingTeam(false);
+      toast({
+        title: "Team Settings Saved",
+        description: "Team management settings have been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Failed to save team settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save team settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  // Updated notification handlers with API integration
   const handleNotificationEdit = () => {
     setIsEditingNotifications(true);
     setOriginalNotificationSettings({ ...notificationSettings });
@@ -121,12 +279,38 @@ const Settings = () => {
     setIsEditingNotifications(false);
   };
 
-  const handleNotificationSave = () => {
-    setIsEditingNotifications(false);
-    toast({
-      title: "Notification Settings Saved", 
-      description: "Your notification preferences have been updated.",
-    });
+  const handleNotificationSave = async () => {
+    try {
+      setIsSaving(true);
+      
+      if (notificationSettingsId) {
+        // Update existing settings
+        const updatedSettings = await notificationSettingsApi.updateSettings(notificationSettingsId, notificationSettings);
+        setNotificationSettings(updatedSettings);
+        setOriginalNotificationSettings(updatedSettings);
+      } else {
+        // Create new settings
+        const newSettings = await notificationSettingsApi.createSettings(notificationSettings);
+        setNotificationSettings(newSettings);
+        setOriginalNotificationSettings(newSettings);
+        setNotificationSettingsId(newSettings.id || null);
+      }
+      
+      setIsEditingNotifications(false);
+      toast({
+        title: "Notification Settings Saved", 
+        description: "Your notification preferences have been updated.",
+      });
+    } catch (error) {
+      console.error('Failed to save notification settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save notification settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleAdvancedEdit = () => {
@@ -155,30 +339,7 @@ const Settings = () => {
           <p className="text-gray-600 mt-1">Manage your application preferences and configurations</p>
         </div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="profile" className="flex items-center space-x-2">
-              <User className="h-4 w-4" />
-              <span>Profile</span>
-            </TabsTrigger>
-            <TabsTrigger value="team" className="flex items-center space-x-2">
-              <Users className="h-4 w-4" />
-              <span>Team</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center space-x-2">
-              <Bell className="h-4 w-4" />
-              <span>Notifications</span>
-            </TabsTrigger>
-            <TabsTrigger value="api" className="flex items-center space-x-2">
-              <Key className="h-4 w-4" />
-              <span>API Keys</span>
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className="flex items-center space-x-2">
-              <SettingsIcon className="h-4 w-4" />
-              <span>Advanced</span>
-            </TabsTrigger>
-          </TabsList>
-
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsContent value="profile" className="space-y-6">
             <Card>
               <CardHeader>
@@ -187,25 +348,45 @@ const Settings = () => {
                     <CardTitle className="flex items-center">
                       <User2 className="h-5 w-5 mr-2" />
                       Profile Information
+                      {adminLoading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
                     </CardTitle>
                     <CardDescription>
                       Update your personal information and profile settings
                     </CardDescription>
                   </div>
                   {!isEditingProfile ? (
-                    <Button onClick={handleProfileEdit} variant="outline" className="flex items-center space-x-2">
+                    <Button 
+                      onClick={handleProfileEdit} 
+                      variant="outline" 
+                      className="flex items-center space-x-2"
+                      disabled={adminLoading}
+                    >
                       <Edit className="h-4 w-4" />
                       <span>Edit</span>
                     </Button>
                   ) : (
                     <div className="flex space-x-2">
-                      <Button onClick={handleProfileCancel} variant="outline" className="flex items-center space-x-2">
+                      <Button 
+                        onClick={handleProfileSave} 
+                        variant="default" 
+                        className="flex items-center space-x-2"
+                        disabled={isSaving}
+                      >
+                        {isSaving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                        <span>Save</span>
+                      </Button>
+                      <Button 
+                        onClick={handleProfileCancel} 
+                        variant="outline" 
+                        className="flex items-center space-x-2"
+                        disabled={isSaving}
+                      >
                         <X className="h-4 w-4" />
                         <span>Cancel</span>
-                      </Button>
-                      <Button onClick={handleProfileSave} className="flex items-center space-x-2">
-                        <Save className="h-4 w-4" />
-                        <span>Save</span>
                       </Button>
                     </div>
                   )}
@@ -303,25 +484,30 @@ const Settings = () => {
                     <CardTitle className="flex items-center">
                       <Users className="h-5 w-5 mr-2" />
                       Team Management
+                      {isLoadingTeam && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
                     </CardTitle>
                     <CardDescription>
                       Configure team-wide settings and policies
                     </CardDescription>
                   </div>
                   {!isEditingTeam ? (
-                    <Button onClick={handleTeamEdit} variant="outline" className="flex items-center space-x-2">
+                    <Button onClick={handleTeamEdit} variant="outline" className="flex items-center space-x-2" disabled={isLoadingTeam}>
                       <Edit className="h-4 w-4" />
                       <span>Edit</span>
                     </Button>
                   ) : (
                     <div className="flex space-x-2">
-                      <Button onClick={handleTeamCancel} variant="outline" className="flex items-center space-x-2">
+                      <Button onClick={handleTeamSave} variant="default" className="flex items-center space-x-2" disabled={isSaving}>
+                        {isSaving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                        <span>Save</span>
+                      </Button>
+                      <Button onClick={handleTeamCancel} variant="outline" className="flex items-center space-x-2" disabled={isSaving}>
                         <X className="h-4 w-4" />
                         <span>Cancel</span>
-                      </Button>
-                      <Button onClick={handleTeamSave} className="flex items-center space-x-2">
-                        <Save className="h-4 w-4" />
-                        <span>Save</span>
                       </Button>
                     </div>
                   )}
@@ -388,25 +574,30 @@ const Settings = () => {
                     <CardTitle className="flex items-center">
                       <Bell className="h-5 w-5 mr-2" />
                       Notification Preferences
+                      {isLoadingNotifications && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
                     </CardTitle>
                     <CardDescription>
                       Manage how you receive notifications and updates
                     </CardDescription>
                   </div>
                   {!isEditingNotifications ? (
-                    <Button onClick={handleNotificationEdit} variant="outline" className="flex items-center space-x-2">
+                    <Button onClick={handleNotificationEdit} variant="outline" className="flex items-center space-x-2" disabled={isLoadingNotifications}>
                       <Edit className="h-4 w-4" />
                       <span>Edit</span>
                     </Button>
                   ) : (
                     <div className="flex space-x-2">
-                      <Button onClick={handleNotificationCancel} variant="outline" className="flex items-center space-x-2">
+                      <Button onClick={handleNotificationSave} variant="default" className="flex items-center space-x-2" disabled={isSaving}>
+                        {isSaving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                        <span>Save</span>
+                      </Button>
+                      <Button onClick={handleNotificationCancel} variant="outline" className="flex items-center space-x-2" disabled={isSaving}>
                         <X className="h-4 w-4" />
                         <span>Cancel</span>
-                      </Button>
-                      <Button onClick={handleNotificationSave} className="flex items-center space-x-2">
-                        <Save className="h-4 w-4" />
-                        <span>Save</span>
                       </Button>
                     </div>
                   )}
@@ -414,7 +605,7 @@ const Settings = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  {Object.entries(notificationSettings).map(([key, value]) => (
+                  {Object.entries(notificationSettings).filter(([key]) => key !== 'id').map(([key, value]) => (
                     <div key={key} className="flex items-center justify-between">
                       <div>
                         <Label className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
@@ -427,7 +618,7 @@ const Settings = () => {
                         </p>
                       </div>
                       <Switch
-                        checked={value}
+                        checked={value as boolean}
                         onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, [key]: checked }))}
                         disabled={!isEditingNotifications}
                       />
@@ -457,18 +648,47 @@ const Settings = () => {
                         <div className="font-medium">{key.name}</div>
                         <div className="text-sm text-gray-500 font-mono">{key.key}</div>
                         <div className="text-xs text-gray-400">
-                          Created: {new Date(key.created).toLocaleDateString()} • 
+                          Created: {new Date(key.created).toLocaleDateString()} •
                           Last used: {new Date(key.lastUsed).toLocaleDateString()}
                         </div>
                       </div>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">Regenerate</Button>
+                        <Button variant="outline" size="sm" className="flex items-center space-x-2" onClick={() => openEditApiKeyModal(key)}>
+                          <Edit className="h-4 w-4" />
+                          <span>Edit</span>
+                        </Button>
                         <Button variant="outline" size="sm" className="text-red-600">Delete</Button>
                       </div>
                     </div>
                   ))}
                 </div>
-                <Button>Generate New API Key</Button>
+                <Button onClick={openCreateApiKeyModal}>Create New API Key</Button>
+                <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingApiKey ? 'Edit API Key' : 'Create New API Key'}</DialogTitle>
+                      <DialogDescription>
+                        {editingApiKey ? 'Update the details of your API key.' : 'Enter details for the new API key.'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="apiKeyName">Name</Label>
+                        <Input id="apiKeyName" name="name" value={apiKeyForm.name} onChange={handleApiKeyFormChange} placeholder="API Key Name" />
+                      </div>
+                      <div>
+                        <Label htmlFor="apiKeyValue">Key</Label>
+                        <Input id="apiKeyValue" name="key" value={apiKeyForm.key} onChange={handleApiKeyFormChange} placeholder="API Key Value" />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleApiKeyFormSave}>{editingApiKey ? 'Save Changes' : 'Create Key'}</Button>
+                      <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
           </TabsContent>
@@ -493,13 +713,13 @@ const Settings = () => {
                     </Button>
                   ) : (
                     <div className="flex space-x-2">
+                      <Button onClick={handleAdvancedSave} variant="default" className="flex items-center space-x-2">
+                        <Save className="h-4 w-4" />
+                        <span>Save</span>
+                      </Button>
                       <Button onClick={handleAdvancedCancel} variant="outline" className="flex items-center space-x-2">
                         <X className="h-4 w-4" />
                         <span>Cancel</span>
-                      </Button>
-                      <Button onClick={handleAdvancedSave} className="flex items-center space-x-2">
-                        <Save className="h-4 w-4" />
-                        <span>Save</span>
                       </Button>
                     </div>
                   )}

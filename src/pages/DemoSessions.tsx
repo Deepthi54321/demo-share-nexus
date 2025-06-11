@@ -10,8 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Layout } from '../components/Layout';
 import { CreateSessionModal } from '../components/CreateSessionModal';
+import { EditSessionModal } from '../components/EditSessionModal';
 import { useToast } from '@/hooks/use-toast';
 import { sessionApi, DemoSession } from '../services/api';
+import { DeleteConfirmationModal } from '../components/DeleteConfirmationModal';
+import { updateSessionsWithAttendees } from '../utils/updateSampleData';
 
 const DemoSessions = () => {
   const navigate = useNavigate();
@@ -25,6 +28,12 @@ const DemoSessions = () => {
   const [editingType, setEditingType] = useState<string | null>(null);
   const [demoSessions, setDemoSessions] = useState<DemoSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<DemoSession | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<DemoSession | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Fetch sessions on component mount
   useEffect(() => {
@@ -47,6 +56,26 @@ const DemoSessions = () => {
 
     fetchSessions();
   }, [toast]);
+
+  const handleUpdateSampleData = async () => {
+    try {
+      await updateSessionsWithAttendees();
+      // Refresh the sessions data
+      const sessions = await sessionApi.getAll();
+      setDemoSessions(sessions);
+      toast({
+        title: "Sample Data Updated",
+        description: "Sessions have been updated with attendee data to demonstrate metrics.",
+      });
+    } catch (error) {
+      console.error('Error updating sample data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update sample data. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const filteredSessions = demoSessions.filter(session => {
     const matchesSearch = session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,17 +112,24 @@ const DemoSessions = () => {
     return <Badge className={colors[difficulty as keyof typeof colors]}>{difficulty}</Badge>;
   };
 
-  const getTypeBadge = (type: string) => {
-    const colors = {
-      'Project-based': 'bg-indigo-100 text-indigo-800',
-      'Product-based': 'bg-emerald-100 text-emerald-800'
-    };
-    return <Badge className={colors[type as keyof typeof colors]}>{type}</Badge>;
+  // Update the getTypeBadge function:
+const getTypeBadge = (type: string) => {
+  const colors = {
+    'PRODUCT_BASED': 'bg-indigo-100 text-indigo-800',
+    'PROJECT_BASED': 'bg-emerald-100 text-emerald-800'
   };
+  const displayNames = {
+    'PRODUCT_BASED': 'Product-based',
+    'PROJECT_BASED': 'Project-based'
+  };
+  return <Badge className={colors[type as keyof typeof colors]}>
+    {displayNames[type as keyof typeof displayNames] || type}
+  </Badge>;
+};
 
-  const handleTypeEdit = async (sessionId: string, newType: 'Project-based' | 'Product-based') => {
+  const handleTypeEdit = async (sessionId: string, newType: 'PROJECT_BASED' | 'PRODUCT_BASED') => {
     try {
-      await sessionApi.update(sessionId, { type: newType });
+      const result = await sessionApi.update(sessionId, { type: newType });
       setDemoSessions(prev => prev.map(session => 
         session.id === sessionId ? { ...session, type: newType } : session
       ));
@@ -161,12 +197,14 @@ const DemoSessions = () => {
 
   const handleCreateSession = async (sessionData: any) => {
     try {
+      console.log('Creating session with data:', sessionData);
       const newSession = await sessionApi.create({
         ...sessionData,
-        createdBy: 'Current Admin',
+        createdBy: sessionData.createdBy || 'Current Admin',
         attendees: 0,
-        type: sessionData.type || 'Project-based'
+        type: 'PRODUCT_BASED'
       });
+      console.log('Created session:', newSession);
       
       setDemoSessions(prev => [...prev, newSession]);
       setIsCreateModalOpen(false);
@@ -188,48 +226,65 @@ const DemoSessions = () => {
   const handleEditSession = async (sessionId: string) => {
     const session = demoSessions.find(s => s.id === sessionId);
     if (session) {
-      const updatedTitle = prompt('Edit session title:', session.title);
-      if (updatedTitle && updatedTitle !== session.title) {
-        try {
-          await sessionApi.update(sessionId, { title: updatedTitle });
-          setDemoSessions(prev => prev.map(s => 
-            s.id === sessionId ? { ...s, title: updatedTitle } : s
-          ));
-          toast({
-            title: "Session Updated",
-            description: `Session title updated to "${updatedTitle}".`,
-          });
-        } catch (error) {
-          console.error('Error updating session:', error);
-          toast({
-            title: "Error",
-            description: "Failed to update session. Please try again.",
-            variant: "destructive"
-          });
-        }
-      }
+      setEditingSession(session);
+      setEditModalOpen(true);
+    }
+  };
+
+  const handleEditSessionSubmit = async (updatedSession: DemoSession) => {
+    setEditLoading(true);
+    try {
+      const result = await sessionApi.update(updatedSession.id, updatedSession);
+      setDemoSessions(prev => prev.map(s => s.id === updatedSession.id ? result : s));
+      setEditModalOpen(false);
+      setEditingSession(null);
+      toast({
+        title: "Success",
+        description: `Session "${result.title}" has been updated successfully.`,
+      });
+    } catch (error: any) {
+      console.error('Error updating session:', error);
+      toast({
+        title: "Error",
+        description: error.data?.message || "Failed to update session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setEditLoading(false);
     }
   };
 
   const handleDeleteSession = async (sessionId: string) => {
     const session = demoSessions.find(s => s.id === sessionId);
-    if (session && confirm(`Are you sure you want to delete "${session.title}"?`)) {
-      try {
-        await sessionApi.delete(sessionId);
-        setDemoSessions(prev => prev.filter(s => s.id !== sessionId));
-        toast({
-          title: "Session Deleted",
-          description: `"${session.title}" has been deleted successfully.`,
-          variant: "destructive"
-        });
-      } catch (error) {
-        console.error('Error deleting session:', error);
-        toast({
-          title: "Error",
-          description: "Failed to delete session. Please try again.",
-          variant: "destructive"
-        });
-      }
+    if (session) {
+      setSessionToDelete(session);
+      setDeleteModalOpen(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!sessionToDelete) return;
+    
+    setDeleteLoading(true);
+    try {
+      await sessionApi.delete(sessionToDelete.id);
+      setDemoSessions(prev => prev.filter(s => s.id !== sessionToDelete.id));
+      setDeleteModalOpen(false);
+      setSessionToDelete(null);
+      toast({
+        title: "Session Deleted",
+        description: `"${sessionToDelete.title}" has been deleted successfully.`,
+        variant: "destructive"
+      });
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -286,6 +341,9 @@ const DemoSessions = () => {
             <p className="text-gray-600 mt-1">Manage and track all demo sessions</p>
           </div>
           <div className="flex space-x-3">
+            <Button variant="outline" onClick={handleUpdateSampleData}>
+              Update Sample Data
+            </Button>
             <Button variant="outline" onClick={exportSessions}>
               <Download className="h-4 w-4 mr-2" />
               Export
@@ -491,8 +549,8 @@ const DemoSessions = () => {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Project-based">Project-based</SelectItem>
-                              <SelectItem value="Product-based">Product-based</SelectItem>
+                              <SelectItem value="PROJECT_BASED">PROJECT_BASED</SelectItem>
+                              <SelectItem value="PRODUCT_BASED">PRODUCT_BASED</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button
@@ -530,7 +588,7 @@ const DemoSessions = () => {
                     <TableCell>
                       <div className="flex items-center space-x-1">
                         <Users className="h-4 w-4 text-gray-400" />
-                        <span>{session.attendees}/{session.maxAttendees}</span>
+                        <span>{session.maxAttendees}</span>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(session.status)}</TableCell>
@@ -575,6 +633,25 @@ const DemoSessions = () => {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={handleCreateSession}
+        />
+
+        {/* Edit Session Modal */}
+        <EditSessionModal
+          open={editModalOpen}
+          setOpen={setEditModalOpen}
+          session={editingSession}
+          onEditSession={handleEditSessionSubmit}
+          loading={editLoading}
+        />
+
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmationModal
+          open={deleteModalOpen}
+          setOpen={setDeleteModalOpen}
+          title="Delete Session"
+          description={`Are you sure you want to delete "${sessionToDelete?.title}"? This action cannot be undone.`}
+          onConfirm={handleDeleteConfirm}
+          loading={deleteLoading}
         />
       </div>
     </Layout>

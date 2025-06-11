@@ -1,49 +1,89 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DemoSessionCard } from './DemoSessionCard';
-
-interface DemoSession {
-  id: string;
-  title: string;
-  technology: string;
-  date: string;
-  time: string;
-  description: string;
-  createdBy: string;
-  attendees: number;
-  status: 'upcoming' | 'completed' | 'cancelled';
-}
+import { EditSessionModal } from './EditSessionModal';
+import { sessionApi, DemoSession } from '../services/api';
+import { toast } from '@/hooks/use-toast';
 
 export const AdminDashboard: React.FC = () => {
-  const [demoSessions, setDemoSessions] = useState<DemoSession[]>([
-    {
-      id: '1',
-      title: 'React Hooks Deep Dive',
-      technology: 'React',
-      date: '2024-01-15',
-      time: '14:00',
-      description: 'Advanced concepts in React Hooks including custom hooks and performance optimization.',
-      createdBy: 'John Admin',
-      attendees: 8,
-      status: 'upcoming'
-    },
-    {
-      id: '2',
-      title: 'TypeScript Best Practices',
-      technology: 'TypeScript',
-      date: '2024-01-10',
-      time: '10:00',
-      description: 'Exploring TypeScript patterns and best practices for large applications.',
-      createdBy: 'John Admin',
-      attendees: 12,
-      status: 'completed'
-    }
-  ]);
+  const [demoSessions, setDemoSessions] = useState<DemoSession[]>([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<DemoSession | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
-  const handleDeleteSession = (sessionId: string) => {
-    setDemoSessions(prev => prev.filter(session => session.id !== sessionId));
+  // Fetch demo sessions on component mount
+  useEffect(() => {
+    const fetchDemoSessions = async () => {
+      try {
+        setIsLoadingData(true);
+        const sessions = await sessionApi.getAll();
+        setDemoSessions(sessions);
+      } catch (error) {
+        console.error('Error fetching demo sessions:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch demo sessions. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchDemoSessions();
+  }, []);
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await sessionApi.delete(sessionId);
+      setDemoSessions(prev => prev.filter(session => session.id !== sessionId));
+      toast({
+        title: "Session Deleted",
+        description: "The demo session has been successfully deleted.",
+      });
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete session. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditSession = (session: DemoSession) => {
+    setEditingSession(session);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateSession = async (updatedSession: DemoSession) => {
+    if (!editingSession) return;
+
+    setIsLoading(true);
+    try {
+      const updatedSessionData = await sessionApi.update(editingSession.id, updatedSession);
+      setDemoSessions(prev => prev.map(session => 
+        session.id === editingSession.id ? updatedSessionData : session
+      ));
+      setIsEditModalOpen(false);
+      setEditingSession(null);
+      toast({
+        title: "Session Updated",
+        description: "The demo session has been successfully updated.",
+      });
+    } catch (error) {
+      console.error('Error updating session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const statsCards = [
@@ -51,6 +91,19 @@ export const AdminDashboard: React.FC = () => {
     { title: 'Upcoming Sessions', value: demoSessions.filter(s => s.status === 'upcoming').length, icon: Clock, color: 'bg-green-500' },
     { title: 'Total Attendees', value: demoSessions.reduce((sum, s) => sum + s.attendees, 0), icon: Users, color: 'bg-purple-500' },
   ];
+
+  if (isLoadingData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">Demo Session Management</h1>
+        </div>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg text-gray-600">Loading demo sessions...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -80,18 +133,33 @@ export const AdminDashboard: React.FC = () => {
       {/* Demo Sessions */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Demo Sessions</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {demoSessions.map((session) => (
-            <DemoSessionCard
-              key={session.id}
-              session={session}
-              onEdit={() => {}}
-              onDelete={handleDeleteSession}
-              isAdmin={true}
-            />
-          ))}
-        </div>
+        {demoSessions.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-600">No demo sessions found.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {demoSessions.map((session) => (
+              <DemoSessionCard
+                key={session.id}
+                session={session}
+                onEdit={() => handleEditSession(session)}
+                onDelete={handleDeleteSession}
+                isAdmin={true}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Edit Session Modal */}
+      <EditSessionModal
+        open={isEditModalOpen}
+        setOpen={setIsEditModalOpen}
+        session={editingSession}
+        onEditSession={handleUpdateSession}
+        loading={isLoading}
+      />
     </div>
   );
 };

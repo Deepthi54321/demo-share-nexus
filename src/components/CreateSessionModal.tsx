@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { X, Calendar, Clock, Users, MapPin, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -38,12 +37,23 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
     description: '',
     location: '',
     maxAttendees: '',
+    attendees: '0',
     difficulty: '',
     prerequisites: '',
-    duration: ''
+    duration: '',
+    createdBy: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +70,7 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
       newErrors.maxAttendees = 'Valid max attendees is required';
     }
     if (!formData.difficulty) newErrors.difficulty = 'Difficulty level is required';
+    if (!formData.createdBy.trim()) newErrors.createdBy = 'Creator name is required';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -70,7 +81,7 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
     onSubmit({
       ...formData,
       maxAttendees: parseInt(formData.maxAttendees),
-      attendees: 0,
+      attendees: parseInt(formData.attendees),
       status: 'upcoming'
     });
 
@@ -83,18 +94,13 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
       description: '',
       location: '',
       maxAttendees: '',
+      attendees: '0',
       difficulty: '',
       prerequisites: '',
-      duration: ''
+      duration: '',
+      createdBy: ''
     });
     setErrors({});
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
   };
 
   if (!isOpen) return null;
@@ -269,6 +275,37 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
                   className={errors.maxAttendees ? 'border-red-500' : ''}
                 />
                 {errors.maxAttendees && <p className="text-red-500 text-sm mt-1">{errors.maxAttendees}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="createdBy">Created By *</Label>
+                <Input
+                  id="createdBy"
+                  type="text"
+                  value={formData.createdBy}
+                  onChange={(e) => handleInputChange('createdBy', e.target.value)}
+                  placeholder="Enter creator name"
+                  className={errors.createdBy ? 'border-red-500' : ''}
+                />
+                {errors.createdBy && <p className="text-red-500 text-sm mt-1">{errors.createdBy}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="attendees">Current Attendees</Label>
+                <Input
+                  id="attendees"
+                  type="number"
+                  min="0"
+                  value={formData.attendees}
+                  onChange={(e) => handleInputChange('attendees', e.target.value)}
+                  placeholder="Enter current attendees"
+                  className={errors.attendees ? 'border-red-500' : ''}
+                />
+                {errors.attendees && <p className="text-red-500 text-sm mt-1">{errors.attendees}</p>}
               </div>
             </div>
           </div>
